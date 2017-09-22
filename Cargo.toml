@@ -1,0 +1,9 @@
+[package]
+name = "texture_packer"
+version = "0.1.0"
+authors = ["David Curthoys <david.curthoys@googlemail.com>"]
+
+[dependencies]
+image = "*"
+serde = "*"
+serde_json = "*"
