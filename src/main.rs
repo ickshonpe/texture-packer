@@ -4,7 +4,7 @@ extern crate serde_json;
 
 use image::{GenericImage, DynamicImage};
 use std::collections::HashMap;
-use std::fs::{File, ReadDir};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::ffi::OsStr;
@@ -14,7 +14,12 @@ type OutputManifest = HashMap<String, (u32, u32, u32, u32)>;
 fn load_images() -> Vec<(String, DynamicImage)> {
     let args = std::env::args().collect::<Vec<_>>();
     let path_name = if args.len() > 1 { &args[1] } else { "." };
-    let dir: ReadDir = std::fs::read_dir(path_name).unwrap();
+    //let dir: ReadDir = std::fs::read_dir(path_name).unwrap();
+    let dir = match std::fs::read_dir(path_name) {
+        Ok(dir) => { dir },
+        Err(e) => { panic!("Error accessing directory '{}': {:?}", path_name, e) }
+
+    };
     let mut source_images: Vec<(String, DynamicImage)> = Vec::new();
     for dir_entry in dir {
         if let Ok(entry) = dir_entry {
@@ -31,7 +36,7 @@ fn load_images() -> Vec<(String, DynamicImage)> {
     source_images    
 }
 
-fn pack_by_decreasing_height(source_images: &mut Vec<(String, DynamicImage)>) -> ( image::RgbaImage, OutputManifest) {    
+fn pack_by_decreasing_height(mut source_images: Vec<(String, DynamicImage)>) -> ( image::RgbaImage, OutputManifest) {    
     source_images.sort_unstable_by(
         |&(_, ref a), &(_, ref b)| {
             let (_, height_a) = a.dimensions();
@@ -73,15 +78,15 @@ fn pack_by_decreasing_height(source_images: &mut Vec<(String, DynamicImage)>) ->
 }
 
 fn write_images(output_buffer: image::RgbaImage, output_manifest: OutputManifest) {    
-    let ref mut output_file = File::create(&Path::new("tileset.png")).unwrap();
-    let _ = image::ImageRgba8(output_buffer).save(output_file, image::PNG);
+    let ref mut image_output_file = File::create(&Path::new("tileset.png")).unwrap();
+    let _ = image::ImageRgba8(output_buffer).save(image_output_file, image::PNG);
     let serialized_manifest = serde_json::to_string(&output_manifest).unwrap();
-    let ref mut output_file = File::create(&Path::new("tileset.json")).unwrap();
-    let _ = output_file.write_all(serialized_manifest.as_bytes());
+    let ref mut manifest_output_file = File::create(&Path::new("tileset.json")).unwrap();
+    let _ = manifest_output_file.write_all(serialized_manifest.as_bytes());
 }
 
 fn main() {
-    let mut source_images = load_images();
-    let (output_buffer, output_manifest) = pack_by_decreasing_height(&mut source_images);
+    let source_images = load_images();
+    let (output_buffer, output_manifest) = pack_by_decreasing_height(source_images);
     write_images(output_buffer, output_manifest);
 }
